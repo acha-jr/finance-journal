@@ -15,7 +15,7 @@ export async function completeOnboarding(formData: FormData) {
 
     if (isNaN(balance) || !monthStr) {
         // validation error
-        return { error: 'Invalid input' }
+        throw new Error('Invalid input')
     }
 
     // Create the first month
@@ -33,7 +33,7 @@ export async function completeOnboarding(formData: FormData) {
 
     if (error) {
         console.error('Onboarding error:', error)
-        return { error: error.message }
+        throw new Error(error.message)
     }
 
     revalidatePath('/')
