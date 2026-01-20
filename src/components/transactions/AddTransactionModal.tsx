@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { addTransaction, updateTransaction, deleteTransaction, parseTransaction } from '@/app/actions/transaction'
+import { AccountData } from '@/app/actions/account'
 import { cn } from '@/lib/utils'
 
 export interface Transaction {
@@ -11,15 +12,17 @@ export interface Transaction {
     transaction_date: string
     type: 'credit' | 'debit'
     category?: string
+    account_id?: string
 }
 
 interface AddTransactionProps {
     isOpen: boolean
     onClose: () => void
     initialData?: Transaction | null
+    accounts?: AccountData[]
 }
 
-export function AddTransactionModal({ isOpen, onClose, initialData }: AddTransactionProps) {
+export function AddTransactionModal({ isOpen, onClose, initialData, accounts = [] }: AddTransactionProps) {
     const [type, setType] = useState<'credit' | 'debit'>('debit')
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [isParsing, setIsParsing] = useState(false)
@@ -211,72 +214,90 @@ export function AddTransactionModal({ isOpen, onClose, initialData }: AddTransac
                         </div>
                     </div>
 
-                    <div>
-                        <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Description</label>
-                        <input
-                            ref={descriptionRef}
-                            type="text"
-                            name="description"
-                            placeholder="e.g. Chowdeck, Salary..."
-                            defaultValue={initialData?.description}
-                            required
-                            className="w-full bg-gray-50 dark:bg-gray-900 border-0 rounded-xl px-4 py-3 text-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 transition-shadow"
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-4">
                         <div>
-                            <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Category</label>
-                            <input
-                                ref={categoryRef}
-                                type="text"
-                                name="category"
-                                list="categories"
-                                placeholder="Select..."
-                                defaultValue={initialData?.category}
-                                className="w-full bg-gray-50 dark:bg-gray-900 border-0 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 transition-shadow"
-                            />
-                            <datalist id="categories">
-                                <option value="Food" />
-                                <option value="Transport" />
-                                <option value="Subscriptions" />
-                                <option value="Family" />
-                                <option value="Data/Airtime" />
-                            </datalist>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Date</label>
-                            <input
-                                ref={dateRef}
-                                type="date"
-                                name="date"
-                                defaultValue={initialData?.transaction_date || new Date().toISOString().split('T')[0]}
-                                className="w-full bg-gray-50 dark:bg-gray-900 border-0 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 transition-shadow"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="flex gap-3">
-                        {initialData && (
-                            <button
-                                type="button"
-                                onClick={handleDelete}
-                                disabled={isSubmitting}
-                                className="flex-none px-4 py-4 bg-red-50 hover:bg-red-100 text-red-600 font-semibold rounded-xl transition-colors"
+                            <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Source Account</label>
+                            <select
+                                name="accountId"
+                                defaultValue={initialData?.account_id || accounts.find(a => a.is_default)?.id}
+                                className="w-full bg-gray-50 dark:bg-gray-900 border-0 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 transition-shadow appearance-none"
+                                required
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
-                            </button>
-                        )}
-                        <button
-                            type="submit"
-                            disabled={isSubmitting}
-                            className={cn(
-                                "flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-lg shadow-indigo-500/30 transition-all active:scale-[0.98] disabled:opacity-50",
-                                isSubmitting ? "!cursor-wait" : "cursor-pointer disabled:cursor-not-allowed"
+                                {accounts.map(acc => (
+                                    <option key={acc.id} value={acc.id}>
+                                        {acc.name} (₦{acc.balance.toLocaleString()})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Description</label>
+                            <input
+                                ref={descriptionRef}
+                                type="text"
+                                name="description"
+                                placeholder="e.g. Chowdeck, Salary..."
+                                defaultValue={initialData?.description}
+                                required
+                                className="w-full bg-gray-50 dark:bg-gray-900 border-0 rounded-xl px-4 py-3 text-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 transition-shadow"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Category</label>
+                                <input
+                                    ref={categoryRef}
+                                    type="text"
+                                    name="category"
+                                    list="categories"
+                                    placeholder="Select..."
+                                    defaultValue={initialData?.category}
+                                    className="w-full bg-gray-50 dark:bg-gray-900 border-0 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 transition-shadow"
+                                />
+                                <datalist id="categories">
+                                    <option value="Food" />
+                                    <option value="Transport" />
+                                    <option value="Subscriptions" />
+                                    <option value="Family" />
+                                    <option value="Data/Airtime" />
+                                </datalist>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Date</label>
+                                <input
+                                    ref={dateRef}
+                                    type="date"
+                                    name="date"
+                                    defaultValue={initialData?.transaction_date || new Date().toISOString().split('T')[0]}
+                                    className="w-full bg-gray-50 dark:bg-gray-900 border-0 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 transition-shadow"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3">
+                            {initialData && (
+                                <button
+                                    type="button"
+                                    onClick={handleDelete}
+                                    disabled={isSubmitting}
+                                    className="flex-none px-4 py-4 bg-red-50 hover:bg-red-100 text-red-600 font-semibold rounded-xl transition-colors"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
+                                </button>
                             )}
-                        >
-                            {isSubmitting ? 'Saving...' : (initialData ? 'Save Changes' : 'Save Transaction')}
-                        </button>
+                            <button
+                                type="submit"
+                                disabled={isSubmitting}
+                                className={cn(
+                                    "flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-lg shadow-indigo-500/30 transition-all active:scale-[0.98] disabled:opacity-50",
+                                    isSubmitting ? "!cursor-wait" : "cursor-pointer disabled:cursor-not-allowed"
+                                )}
+                            >
+                                {isSubmitting ? 'Saving...' : (initialData ? 'Save Changes' : 'Save Transaction')}
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>

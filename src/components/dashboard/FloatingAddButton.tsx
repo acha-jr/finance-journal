@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { AddTransactionModal } from '@/components/transactions/AddTransactionModal'
+import { AccountData } from '@/app/actions/account'
 
-export function FloatingAddButton() {
+export function FloatingAddButton({ accounts }: { accounts: AccountData[] }) {
     const [isOpen, setIsOpen] = useState(false)
 
     return (
@@ -20,6 +21,7 @@ export function FloatingAddButton() {
             <AddTransactionModal
                 isOpen={isOpen}
                 onClose={() => setIsOpen(false)}
+                accounts={accounts}
             />
         </>
     )

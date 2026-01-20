@@ -2,14 +2,16 @@
 
 import { useState } from 'react'
 import { AddTransactionModal, type Transaction } from '@/components/transactions/AddTransactionModal'
+import { AccountData } from '@/app/actions/account'
 
 interface TransactionListProps {
     type: 'credit' | 'debit'
     title: string
     transactions: Transaction[]
+    accounts: AccountData[]
 }
 
-export function TransactionList({ type, title, transactions }: TransactionListProps) {
+export function TransactionList({ type, title, transactions, accounts }: TransactionListProps) {
     const isCredit = type === 'credit'
     const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
 
@@ -49,6 +51,7 @@ export function TransactionList({ type, title, transactions }: TransactionListPr
                     isOpen={!!selectedTransaction}
                     onClose={() => setSelectedTransaction(null)}
                     initialData={selectedTransaction}
+                    accounts={accounts}
                 />
             )}
         </div>
