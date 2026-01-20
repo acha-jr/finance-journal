@@ -54,19 +54,28 @@ export function AddTransactionModal({ isOpen, onClose, initialData }: AddTransac
 
     if (!isOpen) return null
 
-    const handleSubmit = async (formData: FormData) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault()
+        if (isSubmitting) return
+
         setIsSubmitting(true)
+        const formData = new FormData(e.currentTarget)
         formData.append('type', type)
 
-        if (initialData) {
-            formData.append('id', initialData.id)
-            await updateTransaction(formData)
-        } else {
-            await addTransaction(formData)
+        try {
+            if (initialData) {
+                formData.append('id', initialData.id)
+                await updateTransaction(formData)
+            } else {
+                await addTransaction(formData)
+            }
+            onClose()
+        } catch (error) {
+            console.error(error)
+            alert('Something went wrong')
+        } finally {
+            setIsSubmitting(false)
         }
-
-        setIsSubmitting(false)
-        onClose()
     }
 
     const handleDelete = async () => {
@@ -156,7 +165,7 @@ export function AddTransactionModal({ isOpen, onClose, initialData }: AddTransac
                     </div>
                 )}
 
-                <form action={handleSubmit} className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-xl">
                         <button
                             type="button"
@@ -261,7 +270,10 @@ export function AddTransactionModal({ isOpen, onClose, initialData }: AddTransac
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-lg shadow-indigo-500/30 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                            className={cn(
+                                "flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-lg shadow-indigo-500/30 transition-all active:scale-[0.98] disabled:opacity-50",
+                                isSubmitting ? "!cursor-wait" : "cursor-pointer disabled:cursor-not-allowed"
+                            )}
                         >
                             {isSubmitting ? 'Saving...' : (initialData ? 'Save Changes' : 'Save Transaction')}
                         </button>
