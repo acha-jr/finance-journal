@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 
 export async function login(formData: FormData) {
@@ -13,11 +14,12 @@ export async function login(formData: FormData) {
         return
     }
 
+    const origin = (await headers()).get('origin') || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+
     const { error } = await supabase.auth.signInWithOtp({
         email: email,
         options: {
-            // In production, set NEXT_PUBLIC_BASE_URL to your deployment URL
-            emailRedirectTo: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/auth/callback`,
+            emailRedirectTo: `${origin}/auth/callback`,
         },
     })
 
