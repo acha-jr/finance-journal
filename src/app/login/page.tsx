@@ -1,4 +1,5 @@
 import { login } from './actions'
+import { SubmitButton } from './submit-button'
 
 export default async function LoginPage({
     searchParams,
@@ -26,7 +27,7 @@ export default async function LoginPage({
                         <p className="text-center font-medium">Check your email for the magic link.</p>
                     </div>
                 ) : (
-                    <form className="mt-8 space-y-6">
+                    <form className="mt-8 space-y-6" action={login}>
                         <div>
                             <label htmlFor="email" className="sr-only">
                                 Email address
@@ -48,12 +49,9 @@ export default async function LoginPage({
                         )}
 
                         <div>
-                            <button
-                                formAction={login}
-                                className="group relative flex w-full justify-center rounded-lg border border-transparent bg-indigo-600 px-4 py-3 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                            >
-                                Sign in with Magic Link
-                            </button>
+                            <div>
+                                <SubmitButton />
+                            </div>
                         </div>
                     </form>
                 )}
