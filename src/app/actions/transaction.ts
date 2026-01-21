@@ -33,10 +33,15 @@ export async function addTransaction(formData: FormData) {
     const description = formData.get('description') as string
     const category = formData.get('category') as string || 'Misc'
     const date = formData.get('date') as string || new Date().toISOString().split('T')[0]
+    const accountId = formData.get('accountId') as string
 
+    if (!accountId) throw new Error('Account ID is required')
+
+    // 1. Insert the transaction
     const { error } = await supabase.from('transactions').insert({
         user_id: user.id,
         month_id: activeMonth.id,
+        account_id: accountId,
         type,
         amount,
         description,
@@ -47,6 +52,23 @@ export async function addTransaction(formData: FormData) {
     if (error) {
         console.error('Error adding transaction:', error)
         return { error: error.message }
+    }
+
+    // 2. Update Account Balance
+    // Credit (income) adds to balance, Debit (expense) subtracts
+    const balanceChange = type === 'credit' ? amount : -amount
+
+    const { data: account } = await supabase
+        .from('accounts')
+        .select('balance')
+        .eq('id', accountId)
+        .single()
+
+    if (account) {
+        await supabase
+            .from('accounts')
+            .update({ balance: Number(account.balance) + balanceChange })
+            .eq('id', accountId)
     }
 
     revalidatePath('/')
@@ -66,7 +88,35 @@ export async function updateTransaction(formData: FormData) {
     const description = formData.get('description') as string
     const category = formData.get('category') as string || 'Misc'
     const date = formData.get('date') as string
+    const accountId = formData.get('accountId') as string
 
+    // 1. Get the old transaction to revert its effect on balance
+    const { data: oldTx } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+    if (!oldTx) throw new Error('Transaction not found')
+
+    // 2. Revert old balance (on old account)
+    if (oldTx.account_id) {
+        const oldBalanceChange = oldTx.type === 'credit' ? -Number(oldTx.amount) : Number(oldTx.amount)
+        const { data: oldAccount } = await supabase
+            .from('accounts')
+            .select('balance')
+            .eq('id', oldTx.account_id)
+            .single()
+
+        if (oldAccount) {
+            await supabase
+                .from('accounts')
+                .update({ balance: Number(oldAccount.balance) + oldBalanceChange })
+                .eq('id', oldTx.account_id)
+        }
+    }
+
+    // 3. Update the transaction
     const { error } = await supabase
         .from('transactions')
         .update({
@@ -74,7 +124,8 @@ export async function updateTransaction(formData: FormData) {
             amount,
             description,
             category,
-            transaction_date: date
+            transaction_date: date,
+            account_id: accountId
         })
         .eq('id', id)
         .eq('user_id', user.id)
@@ -82,6 +133,23 @@ export async function updateTransaction(formData: FormData) {
     if (error) {
         console.error('Error updating transaction:', error)
         return { error: error.message }
+    }
+
+    // 4. Apply new balance (on new account)
+    if (accountId) {
+        const newBalanceChange = type === 'credit' ? amount : -amount
+        const { data: newAccount } = await supabase
+            .from('accounts')
+            .select('balance')
+            .eq('id', accountId)
+            .single()
+
+        if (newAccount) {
+            await supabase
+                .from('accounts')
+                .update({ balance: Number(newAccount.balance) + newBalanceChange })
+                .eq('id', accountId)
+        }
     }
 
     revalidatePath('/')
@@ -93,6 +161,33 @@ export async function deleteTransaction(id: string) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error('Not authenticated')
 
+    // 1. Get the transaction to revert its effect on balance
+    const { data: tx } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+    if (!tx) throw new Error('Transaction not found')
+
+    // 2. Revert the balance
+    if (tx.account_id) {
+        const balanceChange = tx.type === 'credit' ? -Number(tx.amount) : Number(tx.amount)
+        const { data: account } = await supabase
+            .from('accounts')
+            .select('balance')
+            .eq('id', tx.account_id)
+            .single()
+
+        if (account) {
+            await supabase
+                .from('accounts')
+                .update({ balance: Number(account.balance) + balanceChange })
+                .eq('id', tx.account_id)
+        }
+    }
+
+    // 3. Delete the transaction
     const { error } = await supabase
         .from('transactions')
         .delete()
