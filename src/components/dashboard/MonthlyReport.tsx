@@ -1,17 +1,21 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { generateMonthlyReport } from '@/app/actions/analysis'
 import { cn } from '@/lib/utils'
 import ReactMarkdown from 'react-markdown'
+import html2canvas from 'html2canvas'
+import jsPDF from 'jspdf'
 
 interface MonthlyReportProps {
     monthId: string
+    initialReport?: string | null
 }
 
-export function MonthlyReport({ monthId }: MonthlyReportProps) {
-    const [report, setReport] = useState<string | null>(null)
+export function MonthlyReport({ monthId, initialReport }: MonthlyReportProps) {
+    const [report, setReport] = useState<string | null>(initialReport || null)
     const [isLoading, setIsLoading] = useState(false)
+    const reportRef = useRef<HTMLDivElement>(null)
 
     const handleGenerate = async () => {
         setIsLoading(true)
@@ -23,6 +27,33 @@ export function MonthlyReport({ monthId }: MonthlyReportProps) {
             setReport(result.report)
         }
         setIsLoading(false)
+    }
+
+    const handleDownload = async () => {
+        if (!reportRef.current) return
+
+        try {
+            const canvas = await html2canvas(reportRef.current, {
+                scale: 2, // Higher resolution
+                backgroundColor: '#ffffff'
+            })
+
+            const imgData = canvas.toDataURL('image/png')
+            const pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'a4'
+            })
+
+            const imgWidth = 210 // A4 width in mm
+            const imgHeight = (canvas.height * imgWidth) / canvas.width
+
+            pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight)
+            pdf.save(`monthly-report-${new Date().toISOString().split('T')[0]}.pdf`)
+        } catch (error) {
+            console.error('PDF Generation Error:', error)
+            alert('Failed to generate PDF')
+        }
     }
 
     return (
@@ -61,14 +92,21 @@ export function MonthlyReport({ monthId }: MonthlyReportProps) {
 
             {report && (
                 <div className="animate-in fade-in slide-in-from-bottom-2">
-                    <div className="prose prose-sm prose-indigo dark:prose-invert max-w-none">
+                    <div ref={reportRef} className="prose prose-sm prose-indigo dark:prose-invert max-w-none p-4 bg-white dark:bg-gray-800 rounded-lg">
                         <ReactMarkdown>{report}</ReactMarkdown>
                     </div>
 
-                    <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-end">
+                    <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-3">
+                        <button
+                            onClick={handleDownload}
+                            className="text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors flex items-center gap-1"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+                            Download PDF
+                        </button>
                         <button
                             onClick={handleGenerate}
-                            className="text-xs text-gray-500 hover:text-indigo-600 transition-colors flex items-center gap-1"
+                            className="text-xs text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors flex items-center gap-1"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" /><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" /></svg>
                             Regenerate

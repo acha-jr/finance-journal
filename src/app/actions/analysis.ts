@@ -32,7 +32,6 @@ export async function generateMonthlyReport(monthId: string) {
 
     const prompt = `
     Analyze the following financial transactions for the month of "${month.name}".
-    Opening Balance: ₦${month.opening_balance}
     
     Transactions:
     ${summary}
@@ -52,17 +51,43 @@ export async function generateMonthlyReport(monthId: string) {
     const apiKey = process.env.GEMINI_API_KEY
     if (!apiKey) throw new Error('Missing GEMINI_API_KEY')
 
-    try {
-        const genAI = new GoogleGenerativeAI(apiKey)
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' })
+    const modelsToTry = [
+        'gemini-2.5-flash',
+        'gemini-2.0-flash',
+        'gemini-2.0-flash-001',
+        'gemini-flash-latest'
+    ]
 
-        const result = await model.generateContent(prompt)
-        const response = await result.response
-        const report = response.text()
+    let lastError = null
 
-        return { report }
-    } catch (error) {
-        console.error('AI Analysis Error:', error)
-        return { error: 'Failed to generate report. Please try again later.' }
+    for (const modelName of modelsToTry) {
+        try {
+            const genAI = new GoogleGenerativeAI(apiKey)
+            const model = genAI.getGenerativeModel({ model: modelName })
+
+            console.log(`Attempting report with model: ${modelName}`)
+            const result = await model.generateContent(prompt)
+            const response = await result.response
+            const report = response.text()
+
+            // Save report to database
+            const { error: updateError } = await supabase
+                .from('months')
+                .update({ report })
+                .eq('id', monthId)
+
+            if (updateError) {
+                console.error('Failed to save report:', updateError)
+            }
+
+            return { report }
+        } catch (error: any) {
+            console.warn(`Model ${modelName} failed:`, error.message)
+            lastError = error
+            // Continue to next model
+        }
     }
+
+    console.error('All AI models failed.')
+    return { error: `Report generation failed after multiple attempts. Last error: ${lastError?.message || 'Unknown'}` }
 }
